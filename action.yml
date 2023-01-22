@@ -25,6 +25,10 @@ inputs:
   dispatch-token:
     description: token required for dispatch to Manjaro-Sway/packages
     required: true
+  before_publish:
+    description: script to be run just before publishing the artifact
+    required: false
+    default: echo empty
 
 outputs:
   filename:
@@ -96,6 +100,9 @@ runs:
           chown builder $PWD
           sudo -u builder makepkg -fsAc --noconfirm --noprogressbar -p ${{ inputs.pkgbuild }}
           cp *.pkg.tar.zst* /artifacts/
+    - id: before_publish
+      shell: bash
+      run: ${{ inputs.before_publish }}
     - id: filename
       shell: bash
       if: ${{ env.BUILD == 'true' }}
