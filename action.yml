@@ -102,6 +102,7 @@ runs:
           cp *.pkg.tar.zst* /artifacts/
     - id: before_publish
       shell: bash
+      if: ${{ env.BUILD == 'true' }}
       run: ${{ inputs.before_publish }}
     - id: filename
       shell: bash
