@@ -25,10 +25,10 @@ inputs:
   dispatch-token:
     description: token required for dispatch to Manjaro-Sway/packages
     required: true
-  before_publish:
-    description: script to be run just before publishing the artifact
+  branch:
+    description: manjaro branch to publish against
     required: false
-    default: echo empty
+    default: stable
 
 outputs:
   filename:
@@ -43,7 +43,7 @@ runs:
       run: |
         echo "archs=$(cat ${{ inputs.pkgbuild }} | grep ^arch= | sed -e 's/^arch=(\(.*\))/\1/')" >>$GITHUB_OUTPUT
         VERSION=$(cat ${{ inputs.pkgbuild }} | grep ^pkgver= | sed -e 's/^pkgver=//' | awk '{print $1}')-$(cat ${{ inputs.pkgbuild }} | grep ^pkgrel= | sed -e 's/^pkgrel=//' | awk '{print $1}')
-        echo "version=${VERSION}" >>$GITHUB_OUTPUT
+        echo "version=${{ inputs.branch }}-${VERSION}" >>$GITHUB_OUTPUT
     - name: x86_64-build
       shell: bash
       if: ${{ ( contains(steps.info.outputs.archs, 'any') && inputs.archlinux_arch == 'x86_64' ) }}
@@ -86,7 +86,7 @@ runs:
           pacman-key --keyserver keys.openpgp.org --recv-keys ${{ inputs.gpg_keyid }}
 
           sed -i '/^\[core\]/i \[manjaro-sway\]\nSigLevel = Optional TrustAll\nServer = https://packages.manjaro-sway.download/$arch\n' /etc/pacman.conf
-          pacman-mirrors --geoip
+          pacman-mirrors --api --set-branch "${{ inputs.branch }}"
           sudo pacman -Sy --noconfirm --needed base-devel github-cli
         run: |
           pacman -Syy
@@ -100,10 +100,6 @@ runs:
           chown builder $PWD
           sudo -u builder makepkg -fsAc --noconfirm --noprogressbar -p ${{ inputs.pkgbuild }}
           cp *.pkg.tar.zst* /artifacts/
-    - id: before_publish
-      shell: bash
-      if: ${{ env.BUILD == 'true' }}
-      run: ${{ inputs.before_publish }}
     - name: sign
       shell: bash
       if: ${{ env.BUILD == 'true' }}
@@ -129,4 +125,4 @@ runs:
         token: ${{ inputs.dispatch-token }}
         repository: manjaro-sway/packages
         event-type: package_update
-        client-payload: '{ "repository": "${{ github.repository }}", "version": "${{ steps.info.outputs.version }}" }'
+        client-payload: '{ "repository": "${{ github.repository }}", "version": "${{ steps.info.outputs.version }}", "branch": "${{ inputs.branch }}" }'
